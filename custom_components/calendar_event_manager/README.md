@@ -9,13 +9,8 @@ UID-aware calendar management for Home Assistant calendars, including Google Cal
 3. Add **Calendar Event Manager** from **Settings -> Devices & services -> Add Integration**.
 4. Use the automatically registered **Calendar Event Manager** sidebar panel.
 
-The integration uses only built-in Home Assistant components: `calendar`,
-`frontend`, `http`, and `panel_custom`. It has no external Python dependencies
-and does not require HACS after installation.
-
-A calendar provider, such as Google Calendar, must be configured separately.
-Google Calendar OAuth credentials are owned by the built-in Google integration;
-this integration does not request or store them.
+The integration has no external Python dependencies. A calendar provider, such as
+Google Calendar, must be configured separately.
 
 ## Services
 
@@ -23,9 +18,14 @@ this integration does not request or store them.
 - `calendar_event_manager.delete` previews by default and deletes one event after exact confirmation.
 - `calendar_event_manager.delete_matching` previews by default and requires an exact count confirmation.
 - `calendar_event_manager.replace` previews by default and uses delete-then-create replacement.
+- `calendar_event_manager.adopt` previews by default and updates a writable Google recurring series in place.
 
 The service responses include a `mutated` flag. No mutation occurs unless
 `dry_run: false` and the required confirmation string match exactly.
+
+Replacing an event creates a new UID. Adopting a recurring Google series
+preserves its recurrence and UID and requires a writable base calendar entity,
+not a filtered search entity.
 
 ## Optional Lovelace Card
 

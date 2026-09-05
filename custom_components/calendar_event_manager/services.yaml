@@ -170,3 +170,38 @@ replace:
       name: Confirmation
       selector:
         text:
+
+adopt:
+  name: Adopt recurring event series
+  description: Update a writable Google Calendar recurring series description in place.
+  fields:
+    entity_id:
+      name: Calendar
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    uid:
+      name: Event UID
+      required: true
+      selector:
+        text:
+    recurrence_id:
+      name: Recurrence ID
+      required: true
+      selector:
+        text:
+    description:
+      name: New description
+      required: true
+      selector:
+        text:
+    dry_run:
+      name: Preview only
+      default: true
+      selector:
+        boolean:
+    confirmation:
+      name: Confirmation
+      selector:
+        text:

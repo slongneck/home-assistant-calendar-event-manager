@@ -41,10 +41,12 @@ Google Calendar integration and its OAuth access separately.
 - `calendar_event_manager.delete`
 - `calendar_event_manager.delete_matching`
 - `calendar_event_manager.replace`
+- `calendar_event_manager.adopt`
 
 Mutating services default to preview mode. Applying a mutation requires
 `dry_run: false` and the exact confirmation returned by the preview response.
-Replacing an event creates a new UID.
+Replacing an event creates a new UID. Adoption updates a writable Google
+recurring series in place and preserves its recurrence and UID.
 
 ## Optional Lovelace Card
 

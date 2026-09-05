@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_CONFIRMATION,
+    CONFIRM_ADOPT,
     CONF_DESCRIPTION,
     CONF_DRY_RUN,
     CONF_END,
@@ -34,6 +35,7 @@ from .const import (
     MATCH_EXACT,
     SERVICE_DELETE,
     SERVICE_DELETE_MATCHING,
+    SERVICE_ADOPT,
     SERVICE_PREVIEW,
     SERVICE_REPLACE,
 )
@@ -82,6 +84,16 @@ SERVICE_REPLACE_SCHEMA = vol.Schema(
         vol.Optional(CONF_LOCATION, default=""): cv.string,
         vol.Optional(CONF_RECURRENCE_ID): cv.string,
         vol.Optional(CONF_RECURRENCE_RANGE): cv.string,
+        vol.Optional(CONF_DRY_RUN, default=True): cv.boolean,
+        vol.Optional(CONF_CONFIRMATION, default=""): cv.string,
+    }
+)
+SERVICE_ADOPT_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_ENTITY_ID): _ENTITY_SCHEMA,
+        vol.Required(CONF_UID): cv.string,
+        vol.Required(CONF_RECURRENCE_ID): cv.string,
+        vol.Required(CONF_DESCRIPTION): cv.string,
         vol.Optional(CONF_DRY_RUN, default=True): cv.boolean,
         vol.Optional(CONF_CONFIRMATION, default=""): cv.string,
     }
@@ -250,6 +262,47 @@ async def _handle_replace(call: ServiceCall) -> ServiceResponse:
     return result
 
 
+async def _handle_adopt(call: ServiceCall) -> ServiceResponse:
+    """Update a recurring Google event series description in place."""
+    entity_id = call.data[CONF_ENTITY_ID]
+    uid = call.data[CONF_UID]
+    recurrence_id = call.data[CONF_RECURRENCE_ID]
+    entity = _calendar_entity(call.hass, entity_id)
+    coordinator = getattr(entity, "coordinator", None)
+    sync = getattr(coordinator, "sync", None)
+    api = getattr(sync, "api", None)
+    calendar_id = getattr(entity, "calendar_id", None)
+    if api is None or not hasattr(api, "async_patch_event") or not calendar_id:
+        raise HomeAssistantError(
+            "The selected calendar does not expose an in-place recurring-event update"
+        )
+
+    series_id = recurrence_id.split("_", 1)[0]
+    confirmation = f"{CONFIRM_ADOPT} {entity_id} {uid}"
+    result = {
+        "entity_id": entity_id,
+        "uid": uid,
+        "recurrence_id": recurrence_id,
+        "series_id": series_id,
+        "confirmation": confirmation,
+        "mutated": False,
+        "uid_preserved": True,
+    }
+    if call.data[CONF_DRY_RUN]:
+        return result
+    if call.data[CONF_CONFIRMATION] != confirmation:
+        raise HomeAssistantError(f"confirmation must exactly equal: {confirmation}")
+
+    await api.async_patch_event(
+        calendar_id,
+        series_id,
+        {CONF_DESCRIPTION: call.data[CONF_DESCRIPTION]},
+    )
+    await coordinator.async_request_refresh()
+    result["mutated"] = True
+    return result
+
+
 def async_register_services(hass: HomeAssistant) -> None:
     """Register UID-aware calendar services."""
     hass.services.async_register(
@@ -280,6 +333,13 @@ def async_register_services(hass: HomeAssistant) -> None:
         schema=SERVICE_REPLACE_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADOPT,
+        _handle_adopt,
+        schema=SERVICE_ADOPT_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
 
 
 def async_unregister_services(hass: HomeAssistant) -> None:
@@ -289,5 +349,6 @@ def async_unregister_services(hass: HomeAssistant) -> None:
         SERVICE_DELETE,
         SERVICE_DELETE_MATCHING,
         SERVICE_REPLACE,
+        SERVICE_ADOPT,
     ):
         hass.services.async_remove(DOMAIN, service)
