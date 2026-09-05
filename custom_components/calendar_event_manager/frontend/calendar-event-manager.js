@@ -3,6 +3,8 @@ class CalendarEventManager extends HTMLElement {
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     this.config = {
       calendars: [],
+      selected_calendar_entity: null,
+      selected_series_entity: null,
       ...config,
     };
     this._events = [];
@@ -117,6 +119,31 @@ class CalendarEventManager extends HTMLElement {
     }
   }
 
+  async _deleteSeriesSelected() {
+    const events = this._selectedEvents();
+    if (events.length !== 1 || !events[0].rrule) {
+      this._status = "Select exactly one recurring event to delete its series.";
+      this._render();
+      return;
+    }
+    const event = events[0];
+    const confirmation = `DELETE SERIES ${this._calendar} ${event.uid}`;
+    if (!window.confirm("Delete the entire recurring series? This removes all occurrences.")) return;
+    try {
+      await this._hass.callService("calendar_event_manager", "delete_series", {
+        entity_id: this._calendar,
+        uid: event.uid,
+        dry_run: false,
+        confirmation,
+      });
+      this._status = "Recurring series deleted.";
+      await this._loadEvents();
+    } catch (error) {
+      this._status = `Series deletion failed: ${error.message || error}`;
+      this._render();
+    }
+  }
+
   async _editSelected() {
     const events = this._selectedEvents();
     if (events.length !== 1) {
@@ -194,6 +221,22 @@ class CalendarEventManager extends HTMLElement {
     const id = this._eventId(event, index);
     if (checked) this._selected.add(id);
     else this._selected.delete(id);
+    if (this._hass && this.config.selected_calendar_entity) {
+      this._hass.callService("input_text", "set_value", {
+        entity_id: this.config.selected_calendar_entity,
+        value: this._calendar,
+      }).catch(() => {});
+    }
+    if (this._hass && this.config.selected_series_entity) {
+      const selected = this._selectedEvents();
+      const value = selected.length === 1
+        ? `${selected[0].summary || "(untitled)"} | UID ${selected[0].uid || "unknown"}`
+        : "No single event selected";
+      this._hass.callService("input_text", "set_value", {
+        entity_id: this.config.selected_series_entity,
+        value: value.slice(0, 255),
+      }).catch(() => {});
+    }
     this._render();
   }
 
@@ -233,7 +276,7 @@ class CalendarEventManager extends HTMLElement {
             <label>Start<input type="date" data-start value="${this._start}"></label>
             <label>End<input type="date" data-end value="${this._end}"></label>
           </div>
-          <div class="actions"><button data-load>Preview</button><button data-delete ${selected.length ? "" : "disabled"}>Delete selected</button></div>
+          <div class="actions"><button data-load>Preview</button><button data-delete ${selected.length ? "" : "disabled"}>Delete selected occurrence(s)</button><button data-delete-series ${selected.length === 1 && selectedEvent?.rrule ? "" : "disabled"}>Delete recurring series</button></div>
           <p class="status">${this._status || "Preview is read-only until an action is confirmed."}</p>
           <div class="events">${visible.length ? visible.map((event, index) => `<label class="event"><input type="checkbox" data-event="${index}" ${this._selected.has(this._eventId(event, index)) ? "checked" : ""}><span><strong>${this._escape(event.summary || "(untitled)")}</strong><br>${this._escape(this._eventValue(event, "start"))} - ${this._escape(this._eventValue(event, "end"))}<br><small>${this._escape(event.description || "")}</small></span></label>`).join("") : "<p>No events loaded. Choose a calendar and press Preview.</p>"}</div>
           <details><summary>Edit selected event</summary><div class="form"><label>Summary<input data-edit-summary value="${this._escape(selectedEvent?.summary || "")}"></label><label>Start<input type="datetime-local" data-edit-start value="${toLocalInput(selectedEvent?.start)}"></label><label>End<input type="datetime-local" data-edit-end value="${toLocalInput(selectedEvent?.end)}"></label><label>Description<textarea data-edit-description>${this._escape(selectedEvent?.description || "")}</textarea></label><button data-edit ${selected.length === 1 ? "" : "disabled"}>Replace selected</button></div></details>
@@ -256,6 +299,7 @@ class CalendarEventManager extends HTMLElement {
     this.shadowRoot?.querySelector("[data-end]")?.addEventListener("change", (event) => { this._end = event.target.value; });
     this.shadowRoot?.querySelector("[data-load]")?.addEventListener("click", () => this._loadEvents());
     this.shadowRoot?.querySelector("[data-delete]")?.addEventListener("click", () => this._deleteSelected());
+    this.shadowRoot?.querySelector("[data-delete-series]")?.addEventListener("click", () => this._deleteSeriesSelected());
     this.shadowRoot?.querySelector("[data-edit]")?.addEventListener("click", () => this._editSelected());
     this.shadowRoot?.querySelector("[data-create]")?.addEventListener("click", () => this._createEvent());
     this.shadowRoot?.querySelectorAll("[data-event]").forEach((input) => input.addEventListener("change", (event) => this._setSelected(visibleEvent(this._visibleEvents(), Number(event.target.dataset.event)), event.target.checked, Number(event.target.dataset.event))));

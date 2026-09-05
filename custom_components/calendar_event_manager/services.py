@@ -20,6 +20,7 @@ from .const import (
     CONF_DRY_RUN,
     CONF_END,
     CONF_ENTITY_ID,
+    CONF_INCLUDE_RECURRING,
     CONF_LOCATION,
     CONF_MATCH,
     CONF_RECURRENCE_ID,
@@ -29,12 +30,14 @@ from .const import (
     CONF_UID,
     CONFIRM_DELETE,
     CONFIRM_DELETE_MATCHING,
+    CONFIRM_DELETE_SERIES,
     CONFIRM_REPLACE,
     DOMAIN,
     MATCH_CONTAINS,
     MATCH_EXACT,
     SERVICE_DELETE,
     SERVICE_DELETE_MATCHING,
+    SERVICE_DELETE_SERIES,
     SERVICE_ADOPT,
     SERVICE_PREVIEW,
     SERVICE_REPLACE,
@@ -59,6 +62,7 @@ SERVICE_PREVIEW_SCHEMA = vol.Schema(_COMMON_FILTER_FIELDS)
 SERVICE_DELETE_MATCHING_SCHEMA = vol.Schema(
     {
         **_COMMON_FILTER_FIELDS,
+        vol.Optional(CONF_INCLUDE_RECURRING, default=True): cv.boolean,
         vol.Optional(CONF_DRY_RUN, default=True): cv.boolean,
         vol.Optional(CONF_CONFIRMATION, default=""): cv.string,
     }
@@ -94,6 +98,14 @@ SERVICE_ADOPT_SCHEMA = vol.Schema(
         vol.Required(CONF_UID): cv.string,
         vol.Required(CONF_RECURRENCE_ID): cv.string,
         vol.Required(CONF_DESCRIPTION): cv.string,
+        vol.Optional(CONF_DRY_RUN, default=True): cv.boolean,
+        vol.Optional(CONF_CONFIRMATION, default=""): cv.string,
+    }
+)
+SERVICE_DELETE_SERIES_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_ENTITY_ID): _ENTITY_SCHEMA,
+        vol.Required(CONF_UID): cv.string,
         vol.Optional(CONF_DRY_RUN, default=True): cv.boolean,
         vol.Optional(CONF_CONFIRMATION, default=""): cv.string,
     }
@@ -160,7 +172,13 @@ async def _find_matches(hass: HomeAssistant, call: ServiceCall) -> list[calendar
     entity = _calendar_entity(hass, call.data[CONF_ENTITY_ID])
     start, end = _window(call)
     events = await entity.async_get_events(hass, start, end)
-    return [event for event in events if _matches(event, call)]
+    include_recurring = call.data.get(CONF_INCLUDE_RECURRING, True)
+    return [
+        event
+        for event in events
+        if _matches(event, call)
+        and (include_recurring or event.recurrence_id is None)
+    ]
 
 
 async def _handle_preview(call: ServiceCall) -> ServiceResponse:
@@ -224,6 +242,28 @@ async def _handle_delete_matching(call: ServiceCall) -> ServiceResponse:
             recurrence_id=event.recurrence_id,
             recurrence_range="THISEVENT" if event.recurrence_id else None,
         )
+    result["mutated"] = True
+    return result
+
+
+async def _handle_delete_series(call: ServiceCall) -> ServiceResponse:
+    """Delete an entire recurring series by stable UID."""
+    entity_id = call.data[CONF_ENTITY_ID]
+    uid = call.data[CONF_UID]
+    entity = _calendar_entity(call.hass, entity_id)
+    confirmation = f"{CONFIRM_DELETE_SERIES} {entity_id} {uid}"
+    result = {
+        "entity_id": entity_id,
+        "uid": uid,
+        "confirmation": confirmation,
+        "mutated": False,
+        "warning": "This removes the entire recurring series, not one occurrence.",
+    }
+    if call.data[CONF_DRY_RUN]:
+        return result
+    if call.data[CONF_CONFIRMATION] != confirmation:
+        raise HomeAssistantError(f"confirmation must exactly equal: {confirmation}")
+    await entity.async_delete_event(uid)
     result["mutated"] = True
     return result
 
@@ -328,6 +368,13 @@ def async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN,
+        SERVICE_DELETE_SERIES,
+        _handle_delete_series,
+        schema=SERVICE_DELETE_SERIES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
         SERVICE_REPLACE,
         _handle_replace,
         schema=SERVICE_REPLACE_SCHEMA,
@@ -348,6 +395,7 @@ def async_unregister_services(hass: HomeAssistant) -> None:
         SERVICE_PREVIEW,
         SERVICE_DELETE,
         SERVICE_DELETE_MATCHING,
+        SERVICE_DELETE_SERIES,
         SERVICE_REPLACE,
         SERVICE_ADOPT,
     ):

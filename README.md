@@ -40,6 +40,7 @@ Google Calendar integration and its OAuth access separately.
 - `calendar_event_manager.preview`
 - `calendar_event_manager.delete`
 - `calendar_event_manager.delete_matching`
+- `calendar_event_manager.delete_series`
 - `calendar_event_manager.replace`
 - `calendar_event_manager.adopt`
 

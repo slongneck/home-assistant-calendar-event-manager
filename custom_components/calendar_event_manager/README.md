@@ -17,6 +17,7 @@ Google Calendar, must be configured separately.
 - `calendar_event_manager.preview` returns matching events with UID and recurrence information.
 - `calendar_event_manager.delete` previews by default and deletes one event after exact confirmation.
 - `calendar_event_manager.delete_matching` previews by default and requires an exact count confirmation.
+- `calendar_event_manager.delete_series` previews by default and deletes an entire recurring series only after exact confirmation.
 - `calendar_event_manager.replace` previews by default and uses delete-then-create replacement.
 - `calendar_event_manager.adopt` previews by default and updates a writable Google recurring series in place.
 

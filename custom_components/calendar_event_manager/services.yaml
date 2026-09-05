@@ -37,6 +37,11 @@ preview:
           options:
             - exact
             - contains
+    include_recurring:
+      name: Include recurring events
+      default: true
+      selector:
+        boolean:
 
 delete:
   name: Delete calendar event
@@ -105,6 +110,36 @@ delete_matching:
           options:
             - exact
             - contains
+    include_recurring:
+      name: Include recurring events
+      default: true
+      selector:
+        boolean:
+    dry_run:
+      name: Preview only
+      default: true
+      selector:
+        boolean:
+    confirmation:
+      name: Confirmation
+      selector:
+        text:
+
+delete_series:
+  name: Delete recurring series
+  description: Preview or delete an entire recurring series by UID.
+  fields:
+    entity_id:
+      name: Calendar
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    uid:
+      name: Series UID
+      required: true
+      selector:
+        text:
     dry_run:
       name: Preview only
       default: true
