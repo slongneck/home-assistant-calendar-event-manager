@@ -1,0 +1,172 @@
+preview:
+  name: Preview calendar events
+  description: Return matching calendar events with UID and recurrence information.
+  fields:
+    entity_id:
+      name: Calendar
+      description: Calendar entity to search.
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    start:
+      name: Start
+      description: Optional inclusive start date or datetime.
+      selector:
+        datetime:
+    end:
+      name: End
+      description: Optional inclusive end date or datetime.
+      selector:
+        datetime:
+    summary:
+      name: Summary
+      description: Exact or partial summary filter.
+      selector:
+        text:
+    description:
+      name: Description
+      description: Exact or partial description filter.
+      selector:
+        text:
+    match:
+      name: Match mode
+      default: exact
+      selector:
+        select:
+          options:
+            - exact
+            - contains
+
+delete:
+  name: Delete calendar event
+  description: Preview or delete one event by UID.
+  fields:
+    entity_id:
+      name: Calendar
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    uid:
+      name: Event UID
+      required: true
+      selector:
+        text:
+    recurrence_id:
+      name: Recurrence ID
+      selector:
+        text:
+    recurrence_range:
+      name: Recurrence range
+      selector:
+        text:
+    dry_run:
+      name: Preview only
+      default: true
+      selector:
+        boolean:
+    confirmation:
+      name: Confirmation
+      selector:
+        text:
+
+delete_matching:
+  name: Delete matching calendar events
+  description: Preview or delete all events matching the supplied filters.
+  fields:
+    entity_id:
+      name: Calendar
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    start:
+      name: Start
+      selector:
+        datetime:
+    end:
+      name: End
+      selector:
+        datetime:
+    summary:
+      name: Summary
+      selector:
+        text:
+    description:
+      name: Description
+      selector:
+        text:
+    match:
+      name: Match mode
+      default: exact
+      selector:
+        select:
+          options:
+            - exact
+            - contains
+    dry_run:
+      name: Preview only
+      default: true
+      selector:
+        boolean:
+    confirmation:
+      name: Confirmation
+      selector:
+        text:
+
+replace:
+  name: Replace calendar event
+  description: Preview or replace one event using delete-then-create semantics.
+  fields:
+    entity_id:
+      name: Calendar
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    uid:
+      name: Event UID
+      required: true
+      selector:
+        text:
+    summary:
+      name: New summary
+      required: true
+      selector:
+        text:
+    start:
+      name: New start
+      required: true
+      selector:
+        datetime:
+    end:
+      name: New end
+      required: true
+      selector:
+        datetime:
+    description:
+      name: New description
+      selector:
+        text:
+    location:
+      name: New location
+      selector:
+        text:
+    recurrence_id:
+      name: Recurrence ID
+      selector:
+        text:
+    recurrence_range:
+      name: Recurrence range
+      selector:
+        text:
+    dry_run:
+      name: Preview only
+      default: true
+      selector:
+        boolean:
+    confirmation:
+      name: Confirmation
+      selector:
+        text:

@@ -1,0 +1,7 @@
+{
+  "name": "Calendar Event Manager",
+  "content_in_root": false,
+  "filename": "calendar_event_manager",
+  "render_readme": true,
+  "homeassistant": "2026.8.0"
+}

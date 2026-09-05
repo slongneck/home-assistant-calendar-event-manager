@@ -1,0 +1,18 @@
+{
+  "domain": "calendar_event_manager",
+  "name": "Calendar Event Manager",
+  "documentation": "https://www.home-assistant.io/integrations/calendar/",
+  "issue_tracker": "https://github.com/home-assistant/core/issues",
+  "dependencies": [
+    "calendar",
+    "frontend",
+    "http",
+    "panel_custom"
+  ],
+  "codeowners": [],
+  "requirements": [],
+  "config_flow": true,
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "version": "1.0.0"
+}
