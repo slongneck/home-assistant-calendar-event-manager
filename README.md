@@ -18,6 +18,15 @@ project. Configure the Google Calendar integration separately.
 - Optional Lovelace card with runtime calendar discovery
 - No external Python dependencies
 
+## Dependencies
+
+Required Home Assistant components are built in: `calendar`, `frontend`,
+`http`, and `panel_custom`. No HACS dependency and no external Python package
+is required.
+
+Google Calendar is optional. If selected as a provider, configure the built-in
+Google Calendar integration and its OAuth access separately.
+
 ## Install
 
 1. Install through HACS as a custom repository, or copy
