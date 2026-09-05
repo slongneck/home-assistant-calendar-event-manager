@@ -40,14 +40,14 @@ Replacing an event creates a new UID.
 ## Optional Lovelace Card
 
 The sidebar panel requires no Lovelace resource. The optional card is provided
-at `/local/calendar-event-manager/calendar-event-manager.js`.
+at `/calendar_event_manager/calendar-event-manager.js` after the integration is configured.
 
 For YAML-mode Lovelace, add this resource manually:
 
 ```yaml
 lovelace:
   resources:
-    - url: /local/calendar-event-manager/calendar-event-manager.js
+    - url: /calendar_event_manager/calendar-event-manager.js
       type: module
 ```
 

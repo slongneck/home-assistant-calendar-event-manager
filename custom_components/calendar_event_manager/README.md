@@ -25,14 +25,14 @@ The service responses include a `mutated` flag. No mutation occurs unless
 ## Optional Lovelace Card
 
 The sidebar panel requires no Lovelace resource. The optional card is available
-at `/local/calendar-event-manager/calendar-event-manager.js`.
+at `/calendar_event_manager/calendar-event-manager.js`.
 
 For YAML-mode Lovelace, add this resource manually:
 
 ```yaml
 lovelace:
   resources:
-    - url: /local/calendar-event-manager/calendar-event-manager.js
+    - url: /calendar_event_manager/calendar-event-manager.js
       type: module
 ```
 

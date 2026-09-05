@@ -2,7 +2,7 @@ DOMAIN = "calendar_event_manager"
 PANEL_URL = "calendar-event-manager"
 PANEL_TITLE = "Calendar Event Manager"
 PANEL_ICON = "mdi:calendar-edit"
-PANEL_MODULE_URL = "/local/calendar-event-manager/calendar-event-manager-panel.js?v=1.0.0"
+PANEL_MODULE_URL = "/calendar_event_manager/calendar-event-manager-panel.js?v=1.0.0"
 
 SERVICE_PREVIEW = "preview"
 SERVICE_DELETE = "delete"
