@@ -254,19 +254,56 @@ class CalendarEventManager extends HTMLElement {
     this._render();
   }
 
+  _selectAllVisible() {
+    const visible = this._visibleEvents();
+    const allSelected = visible.length > 0 && visible.every((event, index) =>
+      this._selected.has(this._eventId(event, index)),
+    );
+    visible.forEach((event, index) => {
+      const id = this._eventId(event, index);
+      if (allSelected) this._selected.delete(id);
+      else this._selected.add(id);
+    });
+    this._seriesPreview = null;
+    if (this._hass && this.config.selected_calendar_entity) {
+      this._hass.callService("input_text", "set_value", {
+        entity_id: this.config.selected_calendar_entity,
+        value: this._calendar,
+      }).catch(() => {});
+    }
+    if (this._hass && this.config.selected_series_entity) {
+      const selected = this._selectedEvents();
+      const value = selected.length === 1
+        ? `${selected[0].summary || "(untitled)"} | UID ${selected[0].uid || "unknown"}`
+        : "No single event selected";
+      this._hass.callService("input_text", "set_value", {
+        entity_id: this.config.selected_series_entity,
+        value: value.slice(0, 255),
+      }).catch(() => {});
+    }
+    this._render();
+  }
+
   _render() {
     if (!this.config) return;
+    const eventList = this.shadowRoot.querySelector("[data-event-list]");
+    const eventListScrollTop = eventList?.scrollTop || 0;
     const types = [...new Set(this._events.map((event) => this._eventType(event)))].sort();
     const visible = this._visibleEvents();
     const selected = this._selectedEvents();
     const selectedEvent = selected.length === 1 ? selected[0] : null;
+    const allVisibleSelected = visible.length > 0 && visible.every((event, index) =>
+      this._selected.has(this._eventId(event, index)),
+    );
     const toLocalInput = (value) => value?.dateTime ? value.dateTime.slice(0, 16) : "";
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
         .card-content { padding: 16px; }
         h2 { margin: 0 0 12px; font-size: 1.2rem; }
-        .controls, .form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+        .controls, .form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+        .controls > *, .form > * { min-width: 0; }
+        .controls input, .controls select, .form input, .form select, .form textarea { max-width: 100%; min-width: 0; width: 100%; }
         label { display: grid; gap: 4px; font-size: .85rem; }
         input, select, textarea, button { box-sizing: border-box; font: inherit; padding: 7px; }
         textarea { min-height: 60px; resize: vertical; }
@@ -291,15 +328,17 @@ class CalendarEventManager extends HTMLElement {
             <label>Start<input type="date" data-start value="${this._start}"></label>
             <label>End<input type="date" data-end value="${this._end}"></label>
           </div>
-          <div class="actions"><button data-load>Preview</button><button data-delete ${selected.length ? "" : "disabled"}>Delete selected occurrence(s)</button><button data-preview-series ${selected.length === 1 && selectedEvent?.rrule ? "" : "disabled"}>Preview recurring series deletion</button></div>
+          <div class="actions"><button data-load>Preview</button><button data-select-all ${visible.length ? "" : "disabled"}>${allVisibleSelected ? "Clear selection" : "Select all"}</button><button data-delete ${selected.length ? "" : "disabled"}>Delete selected occurrence(s)</button><button data-preview-series ${selected.length === 1 && selectedEvent?.rrule ? "" : "disabled"}>Preview recurring series deletion</button></div>
           <p class="status">${this._status || "Preview is read-only until an action is confirmed."}</p>
           ${this._seriesPreview ? `<div class="series-preview"><strong>Series deletion preview</strong><p>Calendar: ${this._escape(this._calendar)}<br>UID: ${this._escape(this._seriesPreview.event.uid)}<br>Rule: ${this._escape(this._seriesPreview.event.rrule)}<br><b>All occurrences in this recurring series will be deleted.</b></p><p>Loaded occurrences in selected range: ${this._seriesPreview.occurrences.length}</p><div class="events">${this._seriesPreview.occurrences.map((event) => `<div class="event"><span>${this._escape(event.summary || "(untitled)")}<br>${this._escape(this._eventValue(event, "start"))} - ${this._escape(this._eventValue(event, "end"))}</span></div>`).join("")}</div><button data-confirm-series>Confirm delete entire series</button></div>` : ""}
-          <div class="events">${visible.length ? visible.map((event, index) => `<label class="event"><input type="checkbox" data-event="${index}" ${this._selected.has(this._eventId(event, index)) ? "checked" : ""}><span><strong>${this._escape(event.summary || "(untitled)")}</strong><br>${this._escape(this._eventValue(event, "start"))} - ${this._escape(this._eventValue(event, "end"))}<br><small>${this._escape(event.description || "")}</small></span></label>`).join("") : "<p>No events loaded. Choose a calendar and press Preview.</p>"}</div>
+           <div class="events" data-event-list>${visible.length ? visible.map((event, index) => `<label class="event"><input type="checkbox" data-event="${index}" ${this._selected.has(this._eventId(event, index)) ? "checked" : ""}><span><strong>${this._escape(event.summary || "(untitled)")}</strong><br>${this._escape(this._eventValue(event, "start"))} - ${this._escape(this._eventValue(event, "end"))}<br><small>${this._escape(event.description || "")}</small></span></label>`).join("") : "<p>No events loaded. Choose a calendar and press Preview.</p>"}</div>
           <details><summary>Edit selected event</summary><div class="form"><label>Summary<input data-edit-summary value="${this._escape(selectedEvent?.summary || "")}"></label><label>Start<input type="datetime-local" data-edit-start value="${toLocalInput(selectedEvent?.start)}"></label><label>End<input type="datetime-local" data-edit-end value="${toLocalInput(selectedEvent?.end)}"></label><label>Description<textarea data-edit-description>${this._escape(selectedEvent?.description || "")}</textarea></label><button data-edit ${selected.length === 1 ? "" : "disabled"}>Replace selected</button></div></details>
           <details><summary>Create event</summary><div class="form"><label>Summary<input data-create-summary></label><label>Start<input type="datetime-local" data-create-start></label><label>End<input type="datetime-local" data-create-end></label><label>Description<textarea data-create-description></textarea></label><button data-create>Create event</button></div></details>
         </div>
       </ha-card>`;
     this._bind();
+    const newEventList = this.shadowRoot.querySelector("[data-event-list]");
+    if (newEventList) newEventList.scrollTop = eventListScrollTop;
   }
 
   _escape(value) {
@@ -314,9 +353,10 @@ class CalendarEventManager extends HTMLElement {
     this.shadowRoot?.querySelector("[data-start]")?.addEventListener("change", (event) => { this._start = event.target.value; });
     this.shadowRoot?.querySelector("[data-end]")?.addEventListener("change", (event) => { this._end = event.target.value; });
     this.shadowRoot?.querySelector("[data-load]")?.addEventListener("click", () => this._loadEvents());
+    this.shadowRoot?.querySelector("[data-select-all]")?.addEventListener("click", () => this._selectAllVisible());
     this.shadowRoot?.querySelector("[data-delete]")?.addEventListener("click", () => this._deleteSelected());
-     this.shadowRoot?.querySelector("[data-preview-series]")?.addEventListener("click", () => this._previewSeriesSelected());
-     this.shadowRoot?.querySelector("[data-confirm-series]")?.addEventListener("click", () => this._confirmSeriesDelete());
+    this.shadowRoot?.querySelector("[data-preview-series]")?.addEventListener("click", () => this._previewSeriesSelected());
+    this.shadowRoot?.querySelector("[data-confirm-series]")?.addEventListener("click", () => this._confirmSeriesDelete());
     this.shadowRoot?.querySelector("[data-edit]")?.addEventListener("click", () => this._editSelected());
     this.shadowRoot?.querySelector("[data-create]")?.addEventListener("click", () => this._createEvent());
     this.shadowRoot?.querySelectorAll("[data-event]").forEach((input) => input.addEventListener("change", (event) => this._setSelected(visibleEvent(this._visibleEvents(), Number(event.target.dataset.event)), event.target.checked, Number(event.target.dataset.event))));

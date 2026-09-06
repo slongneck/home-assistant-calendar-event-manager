@@ -1,4 +1,4 @@
-import "/calendar_event_manager/calendar-event-manager.js?v=1.0.1";
+import "/calendar_event_manager/calendar-event-manager.js?v=1.0.3";
 
 class CalendarEventManagerPanel extends HTMLElement {
   connectedCallback() {
