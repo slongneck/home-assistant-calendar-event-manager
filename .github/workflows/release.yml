@@ -22,8 +22,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-        run: gh release create "$RELEASE_TAG" \
-          --repo "$GITHUB_REPOSITORY" \
-          --verify-tag \
-          --title "Calendar Event Manager $RELEASE_TAG" \
-          --generate-notes
+        run: |
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Calendar Event Manager $RELEASE_TAG" \
+            --generate-notes
