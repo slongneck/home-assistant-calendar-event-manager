@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from homeassistant.components import frontend, panel_custom
 from homeassistant.config_entries import ConfigEntry
@@ -12,6 +13,7 @@ from .services import async_register_services, async_unregister_services
 
 FRONTEND_PATH = Path(__file__).parent / "frontend"
 STATIC_PATH = "/calendar_event_manager"
+CARD_RESOURCE_URL = f"{STATIC_PATH}/calendar-event-manager.js"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -25,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.http.async_register_static_paths(
         [StaticPathConfig(STATIC_PATH, str(FRONTEND_PATH), cache_headers=False)]
     )
+    await _async_migrate_card_resource(hass)
     await panel_custom.async_register_panel(
         hass,
         frontend_url_path=PANEL_URL,
@@ -38,6 +41,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         require_admin=True,
     )
     return True
+
+
+async def _async_migrate_card_resource(hass: HomeAssistant) -> None:
+    """Keep the integration's storage-mode Lovelace resource up to date."""
+    lovelace = hass.data.get("lovelace")
+    if not lovelace or getattr(lovelace, "mode", None) != "storage":
+        return
+
+    resources = lovelace.resources
+    if not resources.loaded:
+        await resources.async_load()
+        resources.loaded = True
+    matching = [
+        resource
+        for resource in resources.async_items()
+        if urlsplit(resource["url"]).path == CARD_RESOURCE_URL
+    ]
+    if matching:
+        primary, *duplicates = matching
+        if primary["url"] != CARD_RESOURCE_URL:
+            await resources.async_update_item(
+                primary["id"],
+                {"res_type": "module", "url": CARD_RESOURCE_URL},
+            )
+        for resource in duplicates:
+            await resources.async_delete_item(resource["id"])
+        return
+
+    await resources.async_create_item(
+        {"res_type": "module", "url": CARD_RESOURCE_URL}
+    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
