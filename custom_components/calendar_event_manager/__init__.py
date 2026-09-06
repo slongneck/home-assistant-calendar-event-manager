@@ -46,10 +46,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def _async_migrate_card_resource(hass: HomeAssistant) -> None:
     """Keep the integration's storage-mode Lovelace resource up to date."""
     lovelace = hass.data.get("lovelace")
-    if not lovelace or getattr(lovelace, "mode", None) != "storage":
+    if not lovelace:
         return
 
     resources = lovelace.resources
+    if not hasattr(resources, "async_update_item"):
+        return
     if not resources.loaded:
         await resources.async_load()
         resources.loaded = True
